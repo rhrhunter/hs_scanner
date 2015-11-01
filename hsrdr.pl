@@ -1,6 +1,5 @@
 use strict;
 use warnings;
-use Data::Dumper;
 
 sub read_file {
     while (1) {
@@ -10,7 +9,7 @@ sub read_file {
 	
 	system("clear");
 	print @file_contents;
-	sleep 2;
+	sleep 1;
     }
 }
 

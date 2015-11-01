@@ -108,9 +108,16 @@ sub scan_player_log {
 		if ($is_hero and $player and $player eq "FRIENDLY" and $player_id) {
 		    # identify the friendly player id
 		    $friendly_player_id = $player_id;
-		    msg("Friendly player id is $player_id");
+		    msg("Resetting data structures for new game (friendly player id $friendly_player_id)");
+		    # new game
+		    $drawn_cards   = {};
+		    $enemy_secrets = {};
+		    $enemy_cards   = {};
+		    update_results($drawn_cards, $enemy_secrets, $enemy_cards);    
 		    next;
 		}
+
+		# sometimes it loses track of who the friendly player is
 		if ($player and $player eq "FRIENDLY" and $player_id) {
 		    $friendly_player_id = $player_id;
 		}
@@ -151,18 +158,6 @@ sub scan_player_log {
 			next;
 		    }
 		}	       
-		
-		# see if this is a start to a new game
-		if ($is_hero and $player eq "FRIENDLY" and $type =~ /PLAY/) {
-		    msg("Resetting data structures for new game");
-		    # new game
-		    $drawn_cards   = {};
-		    $enemy_secrets = {};
-		    $enemy_cards   = {};
-		    update_results($drawn_cards, $enemy_secrets, $enemy_cards);
-		    
-		    next;
-		}
 		
 		# see if the opponent played a secret
 		if ($player eq "OPPOSING" and $type eq "SECRET") {
