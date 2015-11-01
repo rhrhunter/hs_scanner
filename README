@@ -1,0 +1,12 @@
+In one terminal window run:      
+    'perl hstrkr.pl'
+
+And in the same directory, run:  
+    'perl hsrdr.pl'
+
+Set the windows aside and then start up hearthstone (in windowed mode) and play. 
+
+The tracker will narrate the game, while the reader will display the following:
+    1) Your Drawn Cards
+    2) Enemy Cards Played
+    3) Enemy Secrets
