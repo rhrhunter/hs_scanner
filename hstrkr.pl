@@ -25,7 +25,6 @@ sub init_player_log {
 
 sub update_results {
     my ($drawn_cards, $enemy_secrets, $enemy_cards) = @_;
-    
 
     system("touch $CWD/hs_hand.log");
     system("rm $CWD/hs_hand.log");
@@ -56,6 +55,8 @@ sub scan_player_log {
     my $drawn_cards   = {};
     my $enemy_secrets = {};
     my $enemy_cards   = {};
+    my $current_enemy;
+    my $friendly_hero;
     my $friendly_player_id = -1;
 
     msg("Clearing out results file");
@@ -105,15 +106,27 @@ sub scan_player_log {
 		if ($card_details =~ /player=(\d+)/i) {
 		    $player_id = $1;
 		}
+
+		# this means we are starting a new game
 		if ($is_hero and $player and $player eq "FRIENDLY" and $player_id) {
 		    # identify the friendly player id
 		    $friendly_player_id = $player_id;
-		    msg("Resetting data structures for new game (friendly player id $friendly_player_id)");
+		    $friendly_hero = $card_name;
+		    msg("Resetting data structures for new game (friendly player id: $friendly_player_id)");
+		    msg("Playing as: $friendly_hero");
+		    		    
 		    # new game
 		    $drawn_cards   = {};
 		    $enemy_secrets = {};
 		    $enemy_cards   = {};
 		    update_results($drawn_cards, $enemy_secrets, $enemy_cards);    
+		    next;
+		}
+
+		# figure out who we are playing against
+		if ($is_hero and $player and $player eq "OPPOSING") {
+		    $current_enemy = $card_name;
+		    msg("Playing against: $current_enemy");
 		    next;
 		}
 
@@ -138,10 +151,10 @@ sub scan_player_log {
 		# keep track of spells
 		if (!$player and !$type) {
 		    if ($friendly_player_id ne $player_id) {
-			msg("Enemy Spell played by $player_id: $card_name");
+			msg("Enemy Spell: $card_name");
 			$enemy_cards->{$card_name}++;
 		    } else {
-			# this was a friendly spell being played
+			msg("Friendly Spell: $card_name");
 		    }
 		    next;
 		}
@@ -153,7 +166,7 @@ sub scan_player_log {
 		if ($card_type ne 'INVALID' and $player eq "FRIENDLY" and $type eq "DECK") {
 		    $drawn_cards->{$card_name}--;
 		    if ($drawn_cards->{$card_name} <= 0) {
-			msg("Mulliganned $card_name");
+			msg("Mulliganned: $card_name");
 			delete($drawn_cards->{$card_name});
 			next;
 		    }
@@ -170,7 +183,7 @@ sub scan_player_log {
 		# was because a secret was revealed
 		if ($player eq "OPPOSING" and $type eq "GRAVEYARD") {
 		    if (exists $enemy_secrets->{$card_id}) {
-			msg("Enemy secret revealed ($card_name)");
+			msg("Enemy secret revealed: $card_name");
 			$enemy_secrets->{$card_id} = $card_name;
 			next;
 		    }
@@ -178,14 +191,20 @@ sub scan_player_log {
 		
 		# keep track of cards we've drawn
 		if ($player eq "FRIENDLY" and $type eq "HAND") {
-		    msg("Drew $card_name");
+		    msg("Drew: $card_name");
 		    $drawn_cards->{$card_name}++;
 		    next;
 		} 
+
+		# keep track of minions we played
+		if ($player eq "FRIENDLY" and $type eq "PLAY") {
+		    msg("Friendly minion: $card_name");
+		    next;
+		}
 		
 		# keep track of minions the enemy has played
 		if (not $is_hero and $player eq "OPPOSING" and $type =~ /PLAY/)  {
-		    msg("Enemy minion $card_name");
+		    msg("Enemy minion: $card_name");
 		    $enemy_cards->{$card_name}++;
 		    next;
 		}
@@ -195,7 +214,6 @@ sub scan_player_log {
 	sleep 2;
     }
 }
-
 
 # main
 
