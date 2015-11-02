@@ -32,9 +32,11 @@ sub update_results {
     system("rm $CWD/hs_hand.log");
 
     open (FH2, ">", "$CWD/hs_hand.log");
-    print FH2 Dumper($drawn_cards);
-    print FH2 Dumper($enemy_cards);
-    print FH2 Dumper($enemy_secrets);
+    my $h = {};
+    $h->{"Drawn Cards"} = $drawn_cards;
+    $h->{"Enemy Cards"} = $enemy_cards;
+    $h->{"Enemy Secrets"} = $enemy_secrets;
+    print FH2 Dumper($h);
     close(FH2);
 }
 
