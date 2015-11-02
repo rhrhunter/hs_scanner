@@ -23,6 +23,8 @@ sub init_player_log {
     `mkdir -p ~/Library/Logs/Unity`;
     `touch ~/Library/Logs/Unity/Player.log`;
     `echo "" > ~/Library/Logs/Unity/Player.log`;
+
+    system("rm $CWD/hs_game.log");
 }
 
 sub update_results {
@@ -45,7 +47,6 @@ sub msg {
     print $msg . "\n";
 
     system("touch $CWD/hs_game.log");
-    system("rm $CWD/hs_game.log");
 
     open (FH3, ">>", "$CWD/hs_game.log");
     print FH3 $msg . "\n";
