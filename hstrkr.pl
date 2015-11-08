@@ -30,9 +30,6 @@ sub init_player_log {
 sub update_results {
     my ($drawn_cards, $enemy_secrets, $enemy_cards) = @_;
 
-    system("touch $CWD/hs_hand.log");
-    system("rm $CWD/hs_hand.log");
-
     open (FH2, ">", "$CWD/hs_hand.log");
     my @h = ();
     @h = ("Drawn Cards", $drawn_cards,
@@ -45,8 +42,6 @@ sub update_results {
 sub msg {
     my ($msg) = @_;
     print $msg . "\n";
-
-    system("touch $CWD/hs_game.log");
 
     open (FH3, ">>", "$CWD/hs_game.log");
     print FH3 $msg . "\n";
