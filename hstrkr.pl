@@ -58,9 +58,11 @@ sub scan_player_log {
     my $current_enemy;
     my $friendly_hero;
     my $friendly_player_id = -1;
+    my $game_over = 1;
 
     msg("Clearing out results file");
     update_results($drawn_cards, $enemy_secrets, $enemy_cards);
+    
 
     while (1) {
 	while (my $line = <FH1>) {
@@ -84,7 +86,7 @@ sub scan_player_log {
 
 		# skip hero power lines
 		next if ($is_hero_power);
-
+		
 		# figure out the card name and ID
 		my $card_name;
 		if ($card_details =~ /name=(.+?)\s\S+=/i) {
@@ -112,13 +114,7 @@ sub scan_player_log {
 		    # identify the friendly player id
 		    $friendly_player_id = $player_id;
 		    $friendly_hero = $card_name;
-		    msg("Resetting data structures for new game (friendly player id: $friendly_player_id)");
 		    msg("Playing as: $friendly_hero");
-		    		    
-		    # new game
-		    $drawn_cards   = {};
-		    $enemy_secrets = {};
-		    $enemy_cards   = {};
 		    update_results($drawn_cards, $enemy_secrets, $enemy_cards);    
 		    next;
 		}
@@ -146,6 +142,19 @@ sub scan_player_log {
 		if ($zone and $zone eq 'DECK' and !$type) {
 		    # these are cards that come from the deck whenever there is a joust
 		    next;
+		}
+
+		# see if the enemy player died
+		if ($type and $type eq "GRAVEYARD") {
+		    if ($player and $player eq "OPPOSING" and $card_name eq $current_enemy) {
+			msg("Game Over, Friendly player wins");
+			$game_over = 1;
+			next;
+		    } elsif ($player and $player eq "FRIENDLY" and $card_name eq $friendly_hero) {
+			msg("Game Over, Friendly player loses");
+			$game_over = 1;
+			next;
+		    }
 		}
 
 		# keep track of spells
@@ -192,6 +201,14 @@ sub scan_player_log {
 		# keep track of cards we've drawn
 		if ($player eq "FRIENDLY" and $type eq "HAND") {
 		    msg("Drew: $card_name");
+		    # reset the drawn cards pool before we start logging if the game is over
+		    if ($game_over) {
+			$game_over = 0;
+			# a new game is probably starting
+			$drawn_cards = {};
+			$enemy_cards = {};
+			$enemy_secrets = {};
+		    }
 		    $drawn_cards->{$card_name}++;
 		    next;
 		} 
