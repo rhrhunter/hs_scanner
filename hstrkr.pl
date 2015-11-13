@@ -62,7 +62,6 @@ sub scan_player_log {
 
     msg("Clearing out results file");
     update_results($drawn_cards, $enemy_secrets, $enemy_cards);
-    
 
     while (1) {
 	while (my $line = <FH1>) {
