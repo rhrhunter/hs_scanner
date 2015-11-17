@@ -13,7 +13,61 @@ sub enable_logging {
     `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
     `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
     `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ScreenPrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    `echo "[Ben]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Bob]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Cameron]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Derek]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[FaceDownCard]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Power]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Kyle]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Net]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    #`echo "[Rachelle]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
 }
 
 my ($player_log) = `ls ~/Library/Logs/Unity/Player.log`;
@@ -67,6 +121,13 @@ sub scan_player_log {
 	while (my $line = <FH1>) {
 	    chomp($line);
 	    update_results($drawn_cards, $enemy_secrets, $enemy_cards);
+
+	    # see if the game ended
+	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenEndOfGame\-\-\-/) {
+		msg("Detected end of game");
+		$game_over = 1;
+		next;
+	    }
 
 	    if ($line =~ /TRANSITIONING card \[(.+?)\] to (FRIENDLY|OPPOSING) (PLAY|GRAVEYARD|PLAY|SECRET|HAND|DECK)/i or 
 		$line =~ /TRANSITIONING card \[(.+)\] to\s*$/) {
