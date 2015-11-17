@@ -20,54 +20,6 @@ sub enable_logging {
     `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
     `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
     `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Bob]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Cameron]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Derek]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[FaceDownCard]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Power]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Kyle]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Net]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-
-    #`echo "[Rachelle]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    #`echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
 }
 
 my ($player_log) = `ls ~/Library/Logs/Unity/Player.log`;
@@ -175,7 +127,6 @@ sub scan_player_log {
 		    $friendly_player_id = $player_id;
 		    $friendly_hero = $card_name;
 		    msg("Playing as: $friendly_hero");
-		    update_results($drawn_cards, $enemy_secrets, $enemy_cards);    
 		    next;
 		}
 
