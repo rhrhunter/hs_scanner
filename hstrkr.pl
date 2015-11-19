@@ -20,6 +20,12 @@ sub enable_logging {
     `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
     `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
     `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+
+    `echo "[Power]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
 }
 
 my ($player_log) = `ls ~/Library/Logs/Unity/Player.log`;
@@ -76,7 +82,14 @@ sub scan_player_log {
 
 	    # see if the game ended
 	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenEndOfGame\-\-\-/) {
-		msg("Detected end of game");
+		msg("Detected end of game.") if (!$game_over);
+		$game_over = 1;
+		next;
+	    }
+
+	    # [Power] PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=STEP value=FINAL_GAMEOVER
+	    if ($line =~ /\[Power\].+?value=FINAL_GAMEOVER/i) {
+		msg("Detected end of game.") if (!$game_over);
 		$game_over = 1;
 		next;
 	    }
@@ -157,11 +170,11 @@ sub scan_player_log {
 
 		# see if the enemy player died
 		if ($type and $type eq "GRAVEYARD") {
-		    if ($player and $player eq "OPPOSING" and $card_name eq $current_enemy) {
+		    if ($player and $player eq "OPPOSING" and $current_enemy and $card_name eq $current_enemy) {
 			msg("Game Over, Friendly player wins");
 			$game_over = 1;
 			next;
-		    } elsif ($player and $player eq "FRIENDLY" and $card_name eq $friendly_hero) {
+		    } elsif ($player and $player eq "FRIENDLY" and $friendly_hero and $card_name eq $friendly_hero) {
 			msg("Game Over, Friendly player loses");
 			$game_over = 1;
 			next;
