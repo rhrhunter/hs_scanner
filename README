@@ -1,14 +1,11 @@
-In one terminal window run:      
-    'perl hstrkr.pl'
+Execute:
+    './hstrkr.pl'
 
-And in the same directory, run:  
-    'perl hsrdr.pl'
+Set the window aside and then start up hearthstone (in windowed mode) and play. 
 
-Set the windows aside and then start up hearthstone (in windowed mode) and play. 
+The tracker will log the game in a file called hs_game.log in the current working directory. 
 
-The tracker will narrate the game in real time, 
-
-The reader will display the following in real time:
+It will also display the following in real time:
     1) Your Drawn Cards
     2) Enemy Cards Played
     3) Enemy Secrets

@@ -39,22 +39,24 @@ sub init_player_log {
     system("rm $CWD/hs_game.log");
 }
 
-sub update_results {
+my $result_change = 1;
+sub display_results {
     my ($drawn_cards, $enemy_secrets, $enemy_cards) = @_;
 
-    open (FH2, ">", "$CWD/hs_hand.log");
     my @h = ();
     @h = ("Drawn Cards", $drawn_cards,
           "Enemy Cards", $enemy_cards,
           "Enemy Secrets",$enemy_secrets);
-    print FH2 Dumper(\@h);
-    close(FH2);
+    
+    if ($result_change) {
+        system("clear");
+        print Dumper(\@h);
+    }
+    $result_change = 0;
 }
 
 sub msg {
     my ($msg) = @_;
-    print $msg . "\n";
-
     open (FH3, ">>", "$CWD/hs_game.log");
     print FH3 $msg . "\n";
     close(FH3);
@@ -72,13 +74,17 @@ sub scan_player_log {
     my $friendly_player_id = -1;
     my $game_over = 1;
 
-    msg("Clearing out results file");
-    update_results($drawn_cards, $enemy_secrets, $enemy_cards);
+    msg("Clearing out results");
+    display_results($drawn_cards, $enemy_secrets, $enemy_cards);
 
+    my $i = 0;
     while (1) {
 	while (my $line = <FH1>) {
+            $i++;
+
+	    display_results($drawn_cards, $enemy_secrets, $enemy_cards);
+            
 	    chomp($line);
-	    update_results($drawn_cards, $enemy_secrets, $enemy_cards);
 
 	    # see if the game ended
 	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenEndOfGame\-\-\-/) {
@@ -186,6 +192,7 @@ sub scan_player_log {
 		    if ($friendly_player_id ne $player_id) {
 			msg("Enemy Spell: $card_name");
 			$enemy_cards->{$card_name}++;
+                        $result_change = 1;
 		    } else {
 			msg("Friendly Spell: $card_name");
 		    }
@@ -201,6 +208,7 @@ sub scan_player_log {
 		    if ($drawn_cards->{$card_name} <= 0) {
 			msg("Mulliganned: $card_name");
 			delete($drawn_cards->{$card_name});
+                        $result_change = 1;
 			next;
 		    }
 		}	       
@@ -209,6 +217,7 @@ sub scan_player_log {
 		if ($player eq "OPPOSING" and $type eq "SECRET") {
 		    msg("Enemy secret played");
 		    $enemy_secrets->{$card_id} = undef;
+                    $result_change = 1;
 		    next;
 		}
 		
@@ -218,6 +227,7 @@ sub scan_player_log {
 		    if (exists $enemy_secrets->{$card_id}) {
 			msg("Enemy secret revealed: $card_name");
 			$enemy_secrets->{$card_id} = $card_name;
+                        $result_change = 1;
 			next;
 		    }
 		}
@@ -234,6 +244,7 @@ sub scan_player_log {
 			$enemy_secrets = {};
 		    }
 		    $drawn_cards->{$card_name}++;
+                    $result_change = 1;
 		    next;
 		} 
 
@@ -247,6 +258,7 @@ sub scan_player_log {
 		if (not $is_hero and $player eq "OPPOSING" and $type =~ /PLAY/)  {
 		    msg("Enemy minion: $card_name");
 		    $enemy_cards->{$card_name}++;
+                    $result_change = 1;
 		    next;
 		}
 	    }
