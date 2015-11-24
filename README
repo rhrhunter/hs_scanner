@@ -1,5 +1,5 @@
-Execute:
-    './hstrkr.pl'
+Usage:
+    ./hs_scanner
 
 Set the window aside and then start up hearthstone (in windowed mode) and play. 
 
