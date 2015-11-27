@@ -6,26 +6,42 @@ use Data::Dumper;
 use Cwd;
 
 my $CWD = getcwd();
+my $WINS = 0;
+my $LOSSES = 0;
+my $SPECTATING = 0;
 
 sub enable_logging {
     `mkdir -p ~/Library/Preferences/Blizzard/Hearthstone/`;
-    `echo "[Zone]" > ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
 
-    `echo "[Ben]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    my @logspecs = (
+        "[Zone]",
+        "[Ben]",
+        "[Bob]",
+        "[Power]",
+        #"[Net]",
+        #"[Rachelle]",
+        #"[Kyle]",
+        #"[FaceDownCard]",
+        #"[Derek]",
+        #"[Mike]",
+        #"[Bob]",
+        #"[Cameron]"
+    );
 
-    `echo "[Power]" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    my $i = 0;
+    foreach my $spec (@logspecs) {
+        my $mode = ">>";
+        if ($i == 0) {
+            $mode = ">";
+        }
+        $i++;
+
+        `echo "$spec" $mode ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+        `echo "LogLevel=1" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+        `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+        `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+        `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
+    }        
 }
 
 my ($player_log) = `ls ~/Library/Logs/Unity/Player.log`;
@@ -41,12 +57,20 @@ sub init_player_log {
 
 my $result_change = 1;
 sub display_results {
-    my ($drawn_cards, $enemy_secrets, $enemy_cards) = @_;
+    my ($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity) = @_;
 
     my @h = ();
-    @h = ("Drawn Cards", $drawn_cards,
-          "Enemy Cards", $enemy_cards,
-          "Enemy Secrets",$enemy_secrets);
+    if ($SPECTATING) {
+        push(@h, "Currently Spectating");
+    } else {
+        if ($friendly_player_entity) {
+            push(@h, "Record ($friendly_player_entity): $WINS - $LOSSES");
+        }
+    }
+    push(@h, 
+         "Drawn Cards",   $drawn_cards,
+         "Enemy Cards",   $enemy_cards,
+         "Enemy Secrets", $enemy_secrets);
     
     if ($result_change) {
         system("clear");
@@ -73,18 +97,24 @@ sub scan_player_log {
     my $friendly_hero;
     my $friendly_player_id = -1;
     my $game_over = 1;
+    my $player_entities = {};
+    my $friendly_player_entity;
 
     msg("Clearing out results");
-    display_results($drawn_cards, $enemy_secrets, $enemy_cards);
+    display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity);
 
     my $i = 0;
     while (1) {
 	while (my $line = <FH1>) {
             $i++;
 
-	    display_results($drawn_cards, $enemy_secrets, $enemy_cards);
+	    display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity);
             
 	    chomp($line);
+
+            if ($line =~ /^\[[A-Za-z]+?\]/) {
+                #msg($line);
+            }
 
 	    # see if the game ended
 	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenEndOfGame\-\-\-/) {
@@ -93,6 +123,7 @@ sub scan_player_log {
 		next;
 	    }
 
+            # detect end of game
 	    # [Power] PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=GameEntity tag=STEP value=FINAL_GAMEOVER
 	    if ($line =~ /\[Power\].+?value=FINAL_GAMEOVER/i) {
 		msg("Detected end of game.") if (!$game_over);
@@ -100,6 +131,57 @@ sub scan_player_log {
 		next;
 	    }
 
+            # detect end of spectator mode
+            if ($line =~ /\[Power\].+?End Spectator Mode/) {
+                msg("No longer spectating");
+                $SPECTATING = 0;
+                $game_over = 1;
+                $result_change = 1;
+                next;
+            }
+
+            # detect start of spectator mode
+            if ($line =~ /\[Power\].+?Start Spectator Game/) {
+                msg("Spectating a game.");
+                $SPECTATING = 1;
+                $game_over = 1;
+                $result_change = 1;
+                next;
+            }
+            
+            # keep track of all player entities and their ID's
+            # [Power] PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=rtba tag=PLAYER_ID value=1
+            if ($line =~ /\[Power\].+?TAG_CHANGE Entity=(.+?) tag=PLAYER_ID value=(\d+)/) {
+                msg("Entity: $1 has ID: $2");
+                $player_entities->{$2} = $1;
+                if (defined $friendly_player_id and $2 eq $friendly_player_id) {
+                    msg("Entity $1 is friendly");
+                    $friendly_player_entity = $1;
+                    $result_change = 1;
+                }
+                next;
+            }
+
+            # see if a player conceded
+            # [Power] PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=rtba tag=PLAYSTATE value=CONCEDED
+            if ($line =~ /\[Power\] PowerTaskList\.DebugPrintPower.+?TAG_CHANGE Entity=(.+?) tag=PLAYSTATE value=CONCEDED/) {
+                my $entity = $1;
+                $result_change = 1;
+                if ($friendly_player_entity) {
+                    if ($entity eq $friendly_player_entity) {
+                        msg("Friendly player $entity conceded.");
+                        $LOSSES++;
+                    } else {
+                        msg("Enemy player $entity conceded.");
+                        $WINS++;
+                    }
+                } else {
+                    msg("Could not store result, dont know who the good guy is");
+                }
+                $game_over = 1;
+                next;
+            }
+            
 	    if ($line =~ /TRANSITIONING card \[(.+?)\] to (FRIENDLY|OPPOSING) (PLAY|GRAVEYARD|PLAY|SECRET|HAND|DECK)/i or 
 		$line =~ /TRANSITIONING card \[(.+)\] to\s*$/) {
 		
@@ -159,6 +241,7 @@ sub scan_player_log {
 		# sometimes it loses track of who the friendly player is
 		if ($player and $player eq "FRIENDLY" and $player_id) {
 		    $friendly_player_id = $player_id;
+                    $friendly_player_entity = $player_entities->{$player_id};
 		}
 
 		my $zone;
@@ -178,10 +261,14 @@ sub scan_player_log {
 		if ($type and $type eq "GRAVEYARD") {
 		    if ($player and $player eq "OPPOSING" and $current_enemy and $card_name eq $current_enemy) {
 			msg("Game Over, Friendly player wins");
+                        $WINS++;
+                        $result_change = 1;
 			$game_over = 1;
 			next;
 		    } elsif ($player and $player eq "FRIENDLY" and $friendly_hero and $card_name eq $friendly_hero) {
 			msg("Game Over, Friendly player loses");
+                        $LOSSES++;
+                        $result_change = 1;
 			$game_over = 1;
 			next;
 		    }
@@ -242,6 +329,7 @@ sub scan_player_log {
 			$drawn_cards = {};
 			$enemy_cards = {};
 			$enemy_secrets = {};
+                        $player_entities = {};
 		    }
 		    $drawn_cards->{$card_name}++;
                     $result_change = 1;
