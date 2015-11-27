@@ -74,10 +74,11 @@ sub display_results {
     
     if ($result_change) {
         system("clear");
-        print Dumper(\@h);
+        print Data::Dump::dump(\@h);
     }
     $result_change = 0;
 }
+use Data::Dump qw(dump);
 
 sub msg {
     my ($msg) = @_;
