@@ -2,8 +2,9 @@
 
 use strict;
 use warnings;
-use Data::Dumper;
+use Data::Dump qw(dump);
 use Cwd;
+use v5.18;
 
 my $CWD = getcwd();
 my $WINS = 0;
@@ -78,7 +79,6 @@ sub display_results {
     }
     $result_change = 0;
 }
-use Data::Dump qw(dump);
 
 sub msg {
     my ($msg) = @_;
@@ -172,9 +172,11 @@ sub scan_player_log {
                     if ($entity eq $friendly_player_entity) {
                         msg("Friendly player $entity conceded.");
                         $LOSSES++;
+                        update_records($player_entities, $friendly_player_entity, $friendly_hero, $current_enemy, 0);
                     } else {
                         msg("Enemy player $entity conceded.");
                         $WINS++;
+                        update_records($player_entities, $friendly_player_entity, $friendly_hero, $current_enemy, 1);
                     }
                 } else {
                     msg("Could not store result, dont know who the good guy is");
@@ -263,12 +265,14 @@ sub scan_player_log {
 		    if ($player and $player eq "OPPOSING" and $current_enemy and $card_name eq $current_enemy) {
 			msg("Game Over, Friendly player wins");
                         $WINS++;
+                        update_records($player_entities, $friendly_player_entity, $friendly_hero, $current_enemy, 1);
                         $result_change = 1;
 			$game_over = 1;
 			next;
 		    } elsif ($player and $player eq "FRIENDLY" and $friendly_hero and $card_name eq $friendly_hero) {
 			msg("Game Over, Friendly player loses");
                         $LOSSES++;
+                        update_records($player_entities, $friendly_player_entity, $friendly_hero, $current_enemy, 0);
                         $result_change = 1;
 			$game_over = 1;
 			next;
@@ -355,6 +359,60 @@ sub scan_player_log {
 	# nothing new sleep a bit
 	sleep 2;
     }
+}
+
+sub update_records {
+    my ($player_ents, $friendly_ent, $friendly_hero, $curr_enemy, $result) = @_;
+
+    if (not scalar keys %{$player_ents} or !$friendly_ent) {
+        msg("Not logging result, missing entity names");
+        return;
+    }
+    if (!$friendly_hero or !$curr_enemy) {
+        msg("Not logging result, missing hero names");
+        return;
+    }
+
+    open(RECORDS, "<", "$CWD/hs_records.log");
+    
+    my $hash = {};
+    while (my $line = <RECORDS>) {
+        chomp($line);
+        if ($line =~ /^(.+?);(.+?);(.+?);(.+?);(\d+?);(\d+?)$/) {
+            $hash->{$1}->{$2}->{$3}->{$4}->{wins} = $5;
+            $hash->{$1}->{$2}->{$3}->{$4}->{losses} = $6;
+        }
+    }
+    close(RECORDS);
+
+    my $enemy_ent;
+    foreach my $ent (values %{$player_ents}) {
+        if ($ent ne $friendly_ent) {
+            $enemy_ent = $ent;
+            if ($result) {
+                $hash->{$friendly_ent}->{$friendly_hero}->{$enemy_ent}->{$curr_enemy}->{wins}   += 1;
+            } else {
+                $hash->{$friendly_ent}->{$friendly_hero}->{$enemy_ent}->{$curr_enemy}->{losses} += 1;
+            }
+            last;            
+        }
+    }
+    msg("Logging result between $friendly_ent and $enemy_ent ($friendly_hero vs $curr_enemy) (result:$result)");
+
+    open(REC, ">", "$CWD/hs_records.log");
+    foreach my $k1 (keys %{$hash}) {
+        foreach my $k2 (keys %{$hash->{$k1}}) {
+            foreach my $k3 (keys %{$hash->{$k1}->{$k2}}) {
+                foreach my $k4 (keys %{$hash->{$k1}->{$k2}->{$k3}}) {
+                    my $losses = $hash->{$k1}->{$k2}->{$k3}->{$k4}->{losses} // 0;
+                    my $wins = $hash->{$k1}->{$k2}->{$k3}->{$k4}->{wins} // 0;
+                    my $line = "${k1};${k2};${k3};${k4};${wins};${losses}\n"; 
+                    print REC $line;
+                }
+            }
+        }
+    }
+    close(REC);
 }
 
 # main
