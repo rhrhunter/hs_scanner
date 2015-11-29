@@ -10,6 +10,9 @@ my $CWD = getcwd();
 my $WINS = 0;
 my $LOSSES = 0;
 my $SPECTATING = 0;
+my $MATCHUP_SINGLE;
+my $MATCHUP_ALL;
+my $MATCHUP_GLOBAL;
 
 sub enable_logging {
     `mkdir -p ~/Library/Preferences/Blizzard/Hearthstone/`;
@@ -61,12 +64,15 @@ sub display_results {
     my ($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity) = @_;
 
     my @h = ();
-    if ($SPECTATING) {
-        push(@h, "Currently Spectating");
-    } else {
-        if ($friendly_player_entity) {
-            push(@h, "Record ($friendly_player_entity): $WINS - $LOSSES");
-        }
+
+    if ($MATCHUP_SINGLE) {
+        push(@h, "$MATCHUP_SINGLE");
+    }
+    if ($MATCHUP_ALL) {
+        push(@h, "$MATCHUP_ALL");
+    }
+    if ($MATCHUP_GLOBAL) {
+        push(@h, "$MATCHUP_GLOBAL");
     }
     push(@h, 
          "Drawn Cards",   $drawn_cards,
@@ -100,6 +106,7 @@ sub scan_player_log {
     my $game_over = 1;
     my $player_entities = {};
     my $friendly_player_entity;
+    my $looked_up_records = 0;
 
     msg("Clearing out results");
     display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity);
@@ -158,6 +165,12 @@ sub scan_player_log {
                 if (defined $friendly_player_id and $2 eq $friendly_player_id) {
                     msg("Entity $1 is friendly");
                     $friendly_player_entity = $1;
+                    $result_change = 1;
+                }
+                if (!$looked_up_records and scalar(keys %{$player_entities}) eq 2) {
+                    msg("Looking up records");
+                    lookup_records($player_entities, $friendly_player_entity, $friendly_hero, $current_enemy);
+                    $looked_up_records = 1;
                     $result_change = 1;
                 }
                 next;
@@ -335,6 +348,7 @@ sub scan_player_log {
 			$enemy_cards = {};
 			$enemy_secrets = {};
                         $player_entities = {};
+                        $looked_up_records = 0;
 		    }
 		    $drawn_cards->{$card_name}++;
                     $result_change = 1;
@@ -361,10 +375,80 @@ sub scan_player_log {
     }
 }
 
+sub lookup_records {
+    my ($player_ents, $friendly_ent, $friendly_hero, $curr_enemy) = @_;
+
+    if ((scalar keys %{$player_ents} ne 2) or !$friendly_ent) {
+        msg("Not looking up records, missing entity names");
+        undef $MATCHUP_SINGLE;
+        undef $MATCHUP_ALL;
+        undef $MATCHUP_GLOBAL;
+        return;
+    }
+    if (!$friendly_hero or !$curr_enemy) {
+        msg("Not looking up records, missing hero names");
+        undef $MATCHUP_SINGLE;
+        undef $MATCHUP_ALL;
+        undef $MATCHUP_GLOBAL;
+        return;
+    }
+
+    my $enemy_ent;
+    foreach my $ent (values %{$player_ents}) {
+        if ($ent ne $friendly_ent) {
+            $enemy_ent = $ent;
+            last;
+        }
+    }
+
+    my $matchup_single_r;
+    my $matchup_all_r;
+    my $matchup_global_r;
+
+    $MATCHUP_SINGLE = "$friendly_ent v. $enemy_ent (matchup)";
+    $MATCHUP_ALL = "$friendly_ent v. $enemy_ent (all)";
+    $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero)";
+    open(RECORDS1, "<", "$CWD/hs_records.log") or return;
+    
+    my $hash = {};
+    while ((!$matchup_single_r or !$matchup_all_r or !$matchup_global_r) and 
+           my $line = <RECORDS1>) {
+        chomp($line);
+        
+        if (!$matchup_single_r and $line =~ /^matchup_single;($friendly_ent);($friendly_hero);($enemy_ent);($curr_enemy);(\d+?);(\d+?)$/) {
+            $matchup_single_r = "[$5 - $6]";
+            next;
+        }
+        if (!$matchup_all_r and $line =~ /^matchup_all;($friendly_ent);($friendly_hero);($enemy_ent);(\d+?);(\d+?)$/) {
+            $matchup_all_r = "[$4 - $5]";
+            next;
+        }
+        if (!$matchup_global_r and $line =~ /^matchup_global;($friendly_ent);($friendly_hero);(\d+?);(\d+?)$/) {
+            $matchup_global_r = "[$3 - $4]";
+            next;
+        }
+    }
+    close(RECORDS1);
+
+    if (!$matchup_single_r) {
+        $matchup_single_r = "[0 - 0]";
+    }
+    if (!$matchup_all_r) {
+        $matchup_all_r = "[0 - 0]";
+    }
+    if (!$matchup_global_r) {
+        $matchup_global_r = "[0 - 0]";
+    }
+
+    $MATCHUP_SINGLE .= " $matchup_single_r";
+    $MATCHUP_ALL .= " $matchup_all_r";
+    $MATCHUP_GLOBAL .= " $matchup_global_r";
+}
+
 sub update_records {
     my ($player_ents, $friendly_ent, $friendly_hero, $curr_enemy, $result) = @_;
 
-    if (not scalar keys %{$player_ents} or !$friendly_ent) {
+    if ((scalar keys %{$player_ents} ne 2) or !$friendly_ent) {
         msg("Not logging result, missing entity names");
         return;
     }
@@ -373,43 +457,81 @@ sub update_records {
         return;
     }
 
-    open(RECORDS, "<", "$CWD/hs_records.log");
+    open(RECORDS2, "<", "$CWD/hs_records.log");
     
     my $hash = {};
-    while (my $line = <RECORDS>) {
+    while (my $line = <RECORDS2>) {
         chomp($line);
-        if ($line =~ /^(.+?);(.+?);(.+?);(.+?);(\d+?);(\d+?)$/) {
-            $hash->{$1}->{$2}->{$3}->{$4}->{wins} = $5;
-            $hash->{$1}->{$2}->{$3}->{$4}->{losses} = $6;
+        if ($line =~ /^matchup_single;(.+?);(.+?);(.+?);(.+?);(\d+?);(\d+?)$/) {
+            $hash->{$1}->{$2}->{matchup}->{$3}->{hero}->{$4}->{wins} = $5;
+            $hash->{$1}->{$2}->{matchup}->{$3}->{hero}->{$4}->{losses} = $6;
+            next;
+        }
+        if ($line =~ /^matchup_global;(.+?);(.+?);(\d+?);(\d+?)$/) {
+            $hash->{$1}->{$2}->{wins} = $3;
+            $hash->{$1}->{$2}->{losses} = $4;
+            next;
+        }
+        if ($line =~ /^matchup_all;(.+?);(.+?);(.+?);(\d+?);(\d+?)$/) {
+            $hash->{$1}->{$2}->{matchup}->{$3}->{wins} = $4;
+            $hash->{$1}->{$2}->{matchup}->{$3}->{losses} = $5;
+            next;
         }
     }
-    close(RECORDS);
+    close(RECORDS2);
 
     my $enemy_ent;
     foreach my $ent (values %{$player_ents}) {
         if ($ent ne $friendly_ent) {
             $enemy_ent = $ent;
             if ($result) {
-                $hash->{$friendly_ent}->{$friendly_hero}->{$enemy_ent}->{$curr_enemy}->{wins}   += 1;
+                $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{hero}->{$curr_enemy}->{wins} += 1;
+                $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{wins} += 1;
+                $hash->{$friendly_ent}->{$friendly_hero}->{wins} += 1;
             } else {
-                $hash->{$friendly_ent}->{$friendly_hero}->{$enemy_ent}->{$curr_enemy}->{losses} += 1;
+                $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{hero}->{$curr_enemy}->{losses} += 1;
+                $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{losses} += 1;
+                $hash->{$friendly_ent}->{$friendly_hero}->{losses} += 1;
             }
+
+            my $w1 = $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{hero}->{$curr_enemy}->{wins} // 0;
+            my $l1 = $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{hero}->{$curr_enemy}->{losses} // 0;
+            my $w2 = $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{wins} // 0;
+            my $l2 = $hash->{$friendly_ent}->{$friendly_hero}->{matchup}->{$enemy_ent}->{losses} // 0;
+            my $w3 = $hash->{$friendly_ent}->{$friendly_hero}->{wins} // 0;
+            my $l3 = $hash->{$friendly_ent}->{$friendly_hero}->{losses} // 0;
+
+            $MATCHUP_SINGLE = "$friendly_ent v. $enemy_ent (matchup) [$w1 - $l2]";
+            $MATCHUP_ALL = "$friendly_ent v. $enemy_ent (all) [$w2 - $l2]";
+            $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero) [$w3 - $l3]";
+
             last;            
         }
     }
+    
     msg("Logging result between $friendly_ent and $enemy_ent ($friendly_hero vs $curr_enemy) (result:$result)");
 
     open(REC, ">", "$CWD/hs_records.log");
     foreach my $k1 (keys %{$hash}) {
         foreach my $k2 (keys %{$hash->{$k1}}) {
-            foreach my $k3 (keys %{$hash->{$k1}->{$k2}}) {
-                foreach my $k4 (keys %{$hash->{$k1}->{$k2}->{$k3}}) {
-                    my $losses = $hash->{$k1}->{$k2}->{$k3}->{$k4}->{losses} // 0;
-                    my $wins = $hash->{$k1}->{$k2}->{$k3}->{$k4}->{wins} // 0;
-                    my $line = "${k1};${k2};${k3};${k4};${wins};${losses}\n"; 
+            my $matchup = $hash->{$k1}->{$k2}->{matchup};
+            foreach my $k3 (keys %{$matchup}) {
+                my $hero = $matchup->{$k3}->{hero};
+                foreach my $k4 (keys %{$hero}) {
+                    my $losses = $hero->{$k4}->{losses} // 0;
+                    my $wins = $hero->{$k4}->{wins} // 0;
+                    my $line = "matchup_single;${k1};${k2};${k3};${k4};${wins};${losses}\n"; 
                     print REC $line;
                 }
+                my $wins = $matchup->{$k3}->{wins} // 0;
+                my $losses = $matchup->{$k3}->{losses} // 0;
+                my $l2 = "matchup_all;${k1};${k2};${k3};${wins};${losses}\n";
+                print REC $l2;
             }
+            my $wins = $hash->{$k1}->{$k2}->{wins} // 0;
+            my $losses = $hash->{$k1}->{$k2}->{losses} // 0;
+            my $l = "matchup_global;${k1};${k2};$wins;$losses\n";
+            print REC $l;
         }
     }
     close(REC);
