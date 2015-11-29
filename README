@@ -55,4 +55,7 @@ Example Output:
     "Wolfrider"         => 1,
   },
   "Enemy Secrets",
-  { 19 => undef },
+  { 
+    19 => "Explosive Trap", 
+    32 => "Snake Trap" 
+  },
