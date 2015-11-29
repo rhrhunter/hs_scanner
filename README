@@ -15,7 +15,7 @@ It will keep track of enemy secrets played as well as let you know when they get
 It also keeps track of your matchups and stores all your records in a file called
 hs_records.log in the current working directory.
 
-The records that are kept are:
+The records that are kept include:
     1) Win/Loss Record between you and the opponent between the selected heroes.
     2) Win/Loss Record between you and opponent overall with your selected hero
     3) Win/Loss Record overall with your selected hero.
