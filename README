@@ -19,3 +19,40 @@ The records that are kept include:
     1) Win/Loss Record between you and the opponent between the selected heroes.
     2) Win/Loss Record between you and the opponent overall with your selected hero
     3) Win/Loss Record overall with your selected hero.
+
+
+Example Output:
+
+  "rtba v. Sush1 (matchup) [0 - 1]",
+  "rtba v. Sush1 (all) [0 - 1]",
+  "rtba (as Medivh) [6 - 9]",
+  "Drawn Cards",
+  {
+    "Big Game Hunter"    => 1,
+    "Emperor Thaurissan" => 1,
+    "Fallen Hero"        => 1,
+    "Forgotten Torch"    => 1,
+    "Maiden of the Lake" => 1,
+    "Mirror Entity"      => 1,
+    "Polymorph"          => 1,
+    "Polymorph: Boar"    => 1,
+    "The Coin"           => 1,
+    "Twilight Drake"     => 1,
+    "Twilight Guardian"  => 1,
+  },
+  "Enemy Cards",
+  {
+    "'Inspired'"        => 1,
+    "Abusive Sergeant"  => 1,
+    "Animal Companion"  => 1,
+    "Argent Horserider" => 1,
+    "Glaivezooka"       => 4,
+    "Knife Juggler"     => 1,
+    "Leper Gnome"       => 1,
+    "Mad Scientist"     => 1,
+    "Misha"             => 1,
+    "Quick Shot"        => 1,
+    "Wolfrider"         => 1,
+  },
+  "Enemy Secrets",
+  { 19 => undef },
