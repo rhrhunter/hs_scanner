@@ -405,8 +405,8 @@ sub lookup_records {
     my $matchup_all_r;
     my $matchup_global_r;
 
-    $MATCHUP_SINGLE = "$friendly_hero v. $curr_enemy (matchup)";
-    $MATCHUP_ALL = "$friendly_ent v. $enemy_ent (all)";
+    $MATCHUP_SINGLE = "$friendly_hero v. $curr_enemy";
+    $MATCHUP_ALL = "$friendly_ent v. $enemy_ent";
     $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero)";
     open(RECORDS1, "<", "$CWD/hs_records.log") or return;
     
@@ -501,8 +501,8 @@ sub update_records {
             my $w3 = $hash->{$friendly_ent}->{$friendly_hero}->{wins} // 0;
             my $l3 = $hash->{$friendly_ent}->{$friendly_hero}->{losses} // 0;
 
-            $MATCHUP_SINGLE = "$friendly_hero v. $curr_enemy (matchup) [$w1 - $l2]";
-            $MATCHUP_ALL = "$friendly_ent v. $enemy_ent (all) [$w2 - $l2]";
+            $MATCHUP_SINGLE = "$friendly_hero v. $curr_enemy [$w1 - $l2]";
+            $MATCHUP_ALL = "$friendly_ent v. $enemy_ent [$w2 - $l2]";
             $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero) [$w3 - $l3]";
 
             last;            
