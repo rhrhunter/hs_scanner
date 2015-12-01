@@ -16,8 +16,8 @@ It also keeps track of your matchups and stores all your records in a file calle
 hs_records.log in the current working directory.
 
 The records that are kept include:
-    1) Win/Loss Record between your hero against the enemy hero.
-    2) Win/Loss Record between you and the opponent overall with your selected hero
+    1) Win/Loss Record between your hero and the enemy hero.
+    2) Win/Loss Record overall between you and the opponent with your selected hero.
     3) Win/Loss Record overall with your selected hero.
 
 
