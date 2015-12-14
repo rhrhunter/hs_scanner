@@ -1,0 +1,6 @@
+language: "perl"
+perl: 5.18
+
+install: true
+
+script: perl -wc hs_scanner
