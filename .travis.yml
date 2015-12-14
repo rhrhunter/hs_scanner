@@ -3,6 +3,9 @@ language: "perl"
 perl:
     - "5.18"
 
+before_install:
+    - cpanm Data::Dump
+
 install: true
 
 script: perl -wc hs_scanner
