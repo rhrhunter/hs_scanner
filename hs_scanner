@@ -245,6 +245,10 @@ sub scan_player_log {
 		if ($card_uuid and $card_uuid =~ /(t|e|o)\s*$/i) {
 		    next;
 		}
+		# This is what happens when someone ropes their turn.
+		if ($card_name and $card_name eq "AFK") {
+		    next;
+		}
 
 		# this means we are starting a new game
 		if ($is_hero and $player and $player eq "FRIENDLY" and $player_id) {
@@ -332,6 +336,15 @@ sub scan_player_log {
 		    $enemy_secrets->{$card_id} = undef;
                     $result_change = 1;
 		    next;
+		}
+		
+		# see if we played a secret and if it *was* and enemy secret
+		# stolen by kezan mystic
+		if ($player eq "FRIENDLY" and $type eq "SECRET") {
+		    if ($enemy_secrets->{$card_id}) {
+			$enemy_secrets->{$card_id} = $card_name . " (stolen)";
+			$result_change = 1; 			   
+		    }
 		}
 		
 		# if the an enemy card went to the graveyard, see if it
