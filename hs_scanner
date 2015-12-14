@@ -238,6 +238,13 @@ sub scan_player_log {
 		    $player_id = $1;
 		}
 
+		# if the card uuid ends in a "t" it is a token, if it ends with an "e"
+		# it is the effect of a spell or buff.
+		# ignore it anyway.
+		if ($card_uuid and $card_uuid =~ /(t|e)\s*$/i) {
+		    next;
+		}
+
 		# this means we are starting a new game
 		if ($is_hero and $player and $player eq "FRIENDLY" and $player_id) {
 		    # identify the friendly player id
