@@ -341,9 +341,11 @@ sub scan_player_log {
 		# see if we played a secret and if it *was* and enemy secret
 		# stolen by kezan mystic
 		if ($player eq "FRIENDLY" and $type eq "SECRET") {
-		    if ($enemy_secrets->{$card_id}) {
+		    if (exists $enemy_secrets->{$card_id}) {
 			$enemy_secrets->{$card_id} = $card_name . " (stolen)";
+			msg("Stole enemy secret $card_name");
 			$result_change = 1; 			   
+			next;
 		    }
 		}
 		
