@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/rhrhunter/hs_scanner.svg?branch=master)](https://travis-ci.org/rhrhunter/hs_scanner)
+
 Usage:
 * ./hs_scanner
 
