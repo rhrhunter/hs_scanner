@@ -6,6 +6,7 @@ perl:
 
 before_install:
     - cpanm Data::Dump
+    - cpanm JSON
 
 install: true
 

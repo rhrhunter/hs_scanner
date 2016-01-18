@@ -3,16 +3,41 @@
 use strict;
 use warnings;
 use Data::Dump qw(dump);
-use Cwd;
 use v5.18;
+use Cwd 'abs_path';
+use File::Basename qw(dirname);
+use JSON qw(decode_json);
 
-my $CWD = getcwd();
+my $CWD = dirname(abs_path($0));
+
 my $WINS = 0;
 my $LOSSES = 0;
 my $SPECTATING = 0;
 my $MATCHUP_SINGLE;
 my $MATCHUP_ALL;
 my $MATCHUP_GLOBAL;
+my $MATCHUP_ARENA = "";
+my $GAME_LOGGING = 0;
+my $IS_ARENA = 0;
+my $CURRENT_ARENA_ID;
+my $CURRENT_ARENA_HERO;
+my $AVG_ARENA_WINS = 0;
+my $ARENA_RECORD = "";
+my $CARD_DB = {};
+#my $HS_JSON_URL = "https://api.hearthstonejson.com/v1/latest/enUS/cards.json";
+
+sub load_hs_json {
+    open(JSON, "<", $CWD . "/cards.json") or die("Could not open the json file");
+    my $json = "";
+    while (my $line = <JSON>) {
+        $json .= $line;
+    }
+    my $decoded_json = decode_json($json);
+
+    foreach my $elm (@{$decoded_json}) {
+        $CARD_DB->{$elm->{id}} = $elm->{name};
+    }
+}
 
 sub enable_logging {
     `mkdir -p ~/Library/Preferences/Blizzard/Hearthstone/`;
@@ -22,6 +47,7 @@ sub enable_logging {
         "[Ben]",
         "[Bob]",
         "[Power]",
+        "[Arena]",
         #"[Net]",
         #"[Rachelle]",
         #"[Kyle]",
@@ -45,7 +71,7 @@ sub enable_logging {
         `echo "FilePrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
         `echo "ConsolePrinting=true" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
         `echo "ScreenPrinting=false" >> ~/Library/Preferences/Blizzard/Hearthstone/log.config`;
-    }        
+    }
 }
 
 my ($player_log) = `ls ~/Library/Logs/Unity/Player.log`;
@@ -56,29 +82,52 @@ sub init_player_log {
     `touch ~/Library/Logs/Unity/Player.log`;
     `echo "" > ~/Library/Logs/Unity/Player.log`;
 
-    system("rm $CWD/hs_game.log");
+    system("rm $CWD/hs_game.log 2>/dev/null");
+}
+
+sub convert_arena_deck {
+    my ($d) = @_;
+
+    my $r = {};
+    foreach my $k (keys %{$d}) {
+        $r->{$CARD_DB->{$k}} = $d->{$k};
+    }
+    return $r;
 }
 
 my $result_change = 1;
 sub display_results {
-    my ($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity) = @_;
+    my ($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity, $arena_deck) = @_;
 
     my @h = ();
 
-    if ($MATCHUP_SINGLE) {
-        push(@h, "$MATCHUP_SINGLE");
+    if ($IS_ARENA) {
+	# arena game
+	push(@h, "Arena Deck: " . $MATCHUP_ARENA);
+        push(@h, "Record: " . $ARENA_RECORD);
+	push(@h, "Average Arena Wins: " . $AVG_ARENA_WINS);
+	push(@h,
+	     #"Drawn Cards",   $drawn_cards,
+	     "Arena Deck",    convert_arena_deck($arena_deck),
+	     "Enemy Secrets", $enemy_secrets);
+    } else {
+	# normal game
+	if ($MATCHUP_SINGLE) {
+	    push(@h, "$MATCHUP_SINGLE");
+	}
+	if ($MATCHUP_ALL) {
+	    push(@h, "$MATCHUP_ALL");
+	}
+	if ($MATCHUP_GLOBAL) {
+	    push(@h, "$MATCHUP_GLOBAL");
+	}
+
+	push(@h,
+	     "Drawn Cards",   $drawn_cards,
+	     "Enemy Cards",   $enemy_cards,
+	     "Enemy Secrets", $enemy_secrets);
     }
-    if ($MATCHUP_ALL) {
-        push(@h, "$MATCHUP_ALL");
-    }
-    if ($MATCHUP_GLOBAL) {
-        push(@h, "$MATCHUP_GLOBAL");
-    }
-    push(@h, 
-         "Drawn Cards",   $drawn_cards,
-         "Enemy Cards",   $enemy_cards,
-         "Enemy Secrets", $enemy_secrets);
-    
+
     if ($result_change) {
         system("clear");
         print Data::Dump::dump(\@h);
@@ -88,15 +137,17 @@ sub display_results {
 
 sub msg {
     my ($msg) = @_;
-    open (FH3, ">>", "$CWD/hs_game.log");
-    print FH3 $msg . "\n";
-    close(FH3);
+    if ($GAME_LOGGING) {
+	open (FH3, ">>", "$CWD/hs_game.log");
+	print FH3 $msg . "\n";
+	close(FH3);
+    }
 }
 
-sub scan_player_log {    
+sub scan_player_log {
     msg("Opening File: $player_log");
     open(FH1, "<", "$player_log") or die("Could not open file: $player_log");
-    
+
     my $drawn_cards   = {};
     my $enemy_secrets = {};
     my $enemy_cards   = {};
@@ -107,27 +158,63 @@ sub scan_player_log {
     my $player_entities = {};
     my $friendly_player_entity;
     my $looked_up_records = 0;
+    my $arena_deck = {};
 
     msg("Clearing out results");
-    display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity);
+    display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity, $arena_deck);
 
     my $i = 0;
     while (1) {
 	while (my $line = <FH1>) {
             $i++;
 
-	    display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity);
-            
+	    display_results($drawn_cards, $enemy_secrets, $enemy_cards, $friendly_player_entity, $arena_deck);
+
 	    chomp($line);
 
             if ($line =~ /^\[[A-Za-z]+?\]/) {
                 #msg($line);
             }
 
+	    if ($line =~ /^\[Arena\]/) {
+		if ($line =~ /ACTIVE_DRAFT_DECK/i) {
+		    # this means that the arena deck is finished and built
+		    # lookup the current stats on this arena
+		    lookup_arena_records();
+
+		    # redraw if we have built the arena deck
+		    $result_change = 1;
+		} else {
+		    # populate the arena deck
+		    handle_arena($arena_deck, $line);
+		}
+		next;
+	    }
+
 	    # see if the game ended
 	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenEndOfGame\-\-\-/) {
 		msg("Detected end of game.") if (!$game_over);
 		$game_over = 1;
+		next;
+	    }
+
+	    # see if we are playing arena or not
+	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenTourneys\-\-\-/i) {
+		# this usually means we are going to play mode
+		$IS_ARENA = 0;
+		$result_change = 1;
+		next;
+	    }
+	    if ($line =~ /\[Bob\] NetCache \<\<\<GET NetCacheFeatures/i) {
+		# this usually means we go back to the main screen
+		$IS_ARENA = 0;
+		$result_change = 1;
+		next;
+	    }
+	    if ($line =~ /\[Bob\] \-\-\-RegisterScreenForge\-\-\-/i) {
+		# entering arena (the deck may or may not be created yet)
+		$IS_ARENA = 1;
+		$arena_deck = {};
 		next;
 	    }
 
@@ -156,7 +243,7 @@ sub scan_player_log {
                 $result_change = 1;
                 next;
             }
-            
+
             # keep track of all player entities and their ID's
             # [Power] PowerTaskList.DebugPrintPower() -     TAG_CHANGE Entity=rtba tag=PLAYER_ID value=1
             if ($line =~ /\[Power\].+?TAG_CHANGE Entity=(.+?) tag=PLAYER_ID value=(\d+)/) {
@@ -197,10 +284,10 @@ sub scan_player_log {
                 $game_over = 1;
                 next;
             }
-            
-	    if ($line =~ /TRANSITIONING card \[(.+?)\] to (FRIENDLY|OPPOSING) (PLAY|GRAVEYARD|PLAY|SECRET|HAND|DECK)/i or 
+
+	    if ($line =~ /TRANSITIONING card \[(.+?)\] to (FRIENDLY|OPPOSING) (PLAY|GRAVEYARD|PLAY|SECRET|HAND|DECK)/i or
 		$line =~ /TRANSITIONING card \[(.+)\] to\s*$/) {
-		
+
 		my $card_details = $1;
 		my $player = $2;
 		my $type = $3;
@@ -215,7 +302,7 @@ sub scan_player_log {
 
 		# skip hero power lines
 		next if ($is_hero_power);
-		
+
 		# figure out the card name and ID
 		my $card_name;
 		if ($card_details =~ /name=(.+?)\s\S+=/i) {
@@ -241,8 +328,9 @@ sub scan_player_log {
 		# if the card uuid ends in a "t" it is a token,
 		# if it ends with an "e" it is the effect of a spell or buff.
 		# it is the effect of a hero power if it ends in 'o'
+		# if it has tk9, it is an old fashion token (treant)
 		# ignore it either way.
-		if ($card_uuid and $card_uuid =~ /(t|e|o)\s*$/i) {
+		if ($card_uuid and $card_uuid =~ /(t|e|o|tk9)\s*$/i) {
 		    next;
 		}
 		# This is what happens when someone ropes their turn.
@@ -315,7 +403,7 @@ sub scan_player_log {
 		    }
 		    next;
 		}
-		
+
 		# ignore cards drawn by enemy
 		next if ($player eq "OPPOSING" and $type =~ /HAND|DECK/);
 
@@ -325,11 +413,17 @@ sub scan_player_log {
 		    if ($drawn_cards->{$card_name} <= 0) {
 			msg("Mulliganned: $card_name");
 			delete($drawn_cards->{$card_name});
+
+                        # if its an arena game, put it back in the arena deck
+                        if ($IS_ARENA) {
+                            $arena_deck->{$card_uuid}++;
+                        }
+
                         $result_change = 1;
 			next;
 		    }
-		}	       
-		
+		}
+
 		# see if the opponent played a secret
 		if ($player eq "OPPOSING" and $type eq "SECRET") {
 		    msg("Enemy secret played");
@@ -337,18 +431,18 @@ sub scan_player_log {
                     $result_change = 1;
 		    next;
 		}
-		
+
 		# see if we played a secret and if it *was* and enemy secret
 		# stolen by kezan mystic
 		if ($player eq "FRIENDLY" and $type eq "SECRET") {
 		    if (exists $enemy_secrets->{$card_id}) {
 			$enemy_secrets->{$card_id} = $card_name . " (stolen)";
 			msg("Stole enemy secret $card_name");
-			$result_change = 1; 			   
+			$result_change = 1;
 			next;
 		    }
 		}
-		
+
 		# if the an enemy card went to the graveyard, see if it
 		# was because a secret was revealed
 		if ($player eq "OPPOSING" and $type eq "GRAVEYARD") {
@@ -359,7 +453,7 @@ sub scan_player_log {
 			next;
 		    }
 		}
-		
+
 		# keep track of cards we've drawn
 		if ($player eq "FRIENDLY" and $type eq "HAND") {
 		    msg("Drew: $card_name");
@@ -374,16 +468,25 @@ sub scan_player_log {
                         $looked_up_records = 0;
 		    }
 		    $drawn_cards->{$card_name}++;
+
+		    # if we are playing an arena game, remove the card from our arena deck
+		    if ($IS_ARENA and $card_uuid and $arena_deck->{$card_uuid}) {
+			$arena_deck->{$card_uuid}--;
+                        if ($arena_deck->{$card_uuid} == 0) {
+                            delete($arena_deck->{$card_uuid});
+                        }
+		    }
+
                     $result_change = 1;
 		    next;
-		} 
+		}
 
 		# keep track of minions we played
 		if ($player eq "FRIENDLY" and $type eq "PLAY") {
 		    msg("Friendly minion: $card_name");
 		    next;
 		}
-		
+
 		# keep track of minions the enemy has played
 		if (not $is_hero and $player eq "OPPOSING" and $type =~ /PLAY/)  {
 		    msg("Enemy minion: $card_name");
@@ -432,12 +535,12 @@ sub lookup_records {
     $MATCHUP_ALL = "$friendly_ent v. $enemy_ent";
     $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero)";
     open(RECORDS1, "<", "$CWD/hs_records.log") or return;
-    
+
     my $hash = {};
-    while ((!$matchup_single_r or !$matchup_all_r or !$matchup_global_r) and 
+    while ((!$matchup_single_r or !$matchup_all_r or !$matchup_global_r) and
            my $line = <RECORDS1>) {
         chomp($line);
-        
+
         if (!$matchup_single_r and $line =~ /^matchup_single;($friendly_ent);($friendly_hero);($curr_enemy);(\d+?);(\d+?)$/) {
             $matchup_single_r = "[$4 - $5]";
             next;
@@ -468,6 +571,33 @@ sub lookup_records {
     $MATCHUP_GLOBAL .= " $matchup_global_r";
 }
 
+sub lookup_arena_records {
+    my $arena_stats_r;
+    my $arena_record;
+    if ($IS_ARENA and !$arena_stats_r) {
+	$arena_stats_r = $CARD_DB->{$CURRENT_ARENA_HERO} . "($CURRENT_ARENA_ID)";
+        $arena_record = "[0 - 0]";
+    }
+    open(RECORDSA, "<", "$CWD/hs_records.log") or return;
+
+    my $hash = {};
+    while (my $line = <RECORDSA>) {
+        chomp($line);
+	if ($line =~ /^arena_stats;$CURRENT_ARENA_ID;(\d+?);(\d+?);(\S+?)$/) {
+	    $arena_stats_r = $CARD_DB->{$CURRENT_ARENA_HERO} . " ($CURRENT_ARENA_ID)";
+            $arena_record = "[$1 - $2]";
+	    last;
+	}
+	if ($line =~ /^arena_global_stats;(\d+?);(\d+?);(\d+?);(\d+?)$/i) {
+	    $AVG_ARENA_WINS = $2;
+	}
+    }
+    close(RECORDSA);
+
+    $MATCHUP_ARENA = $arena_stats_r;
+    $ARENA_RECORD = $arena_record;
+}
+
 sub update_records {
     my ($player_ents, $friendly_ent, $friendly_hero, $curr_enemy, $result) = @_;
 
@@ -481,8 +611,9 @@ sub update_records {
     }
 
     open(RECORDS2, "<", "$CWD/hs_records.log");
-    
+
     my $hash = {};
+    my $arena_stats = {};
     while (my $line = <RECORDS2>) {
         chomp($line);
         if ($line =~ /^matchup_single;(.+?);(.+?);(.+?);(\d+?);(\d+?)$/) {
@@ -500,6 +631,11 @@ sub update_records {
             $hash->{$1}->{$2}->{matchup}->{$3}->{losses} = $5;
             next;
         }
+	if ($line =~ /^arena_stats;(\S+?);(\d+?);(\d+?);(\S+?)$/) {
+	    $arena_stats->{$1}->{wins} = $2;
+	    $arena_stats->{$1}->{losses} = $3;
+            $arena_stats->{$1}->{hero} = $4;
+	}
     }
     close(RECORDS2);
 
@@ -528,10 +664,25 @@ sub update_records {
             $MATCHUP_ALL = "$friendly_ent v. $enemy_ent [$w2 - $l2]";
             $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero) [$w3 - $l3]";
 
-            last;            
+            last;
         }
     }
-    
+
+    # if this is an arena game, we have an arena id, intialize the stats for it
+    if ($IS_ARENA and defined($CURRENT_ARENA_ID)) {
+	if ($result) {
+	    $arena_stats->{$CURRENT_ARENA_ID}->{wins}++;
+	} else {
+	    $arena_stats->{$CURRENT_ARENA_ID}->{losses}++;
+	}
+	my $wins = $arena_stats->{$CURRENT_ARENA_ID}->{wins} //= 0;
+	my $losses = $arena_stats->{$CURRENT_ARENA_ID}->{losses} //= 0;
+	$arena_stats->{$CURRENT_ARENA_ID}->{hero} = $CURRENT_ARENA_HERO;
+
+	$MATCHUP_ARENA = $CARD_DB->{$CURRENT_ARENA_HERO} . " (" . $CURRENT_ARENA_ID . ")";
+        $ARENA_RECORD = "[$wins - $losses]";
+    }
+
     msg("Logging result between $friendly_ent and $enemy_ent ($friendly_hero vs $curr_enemy) (result:$result)");
 
     open(REC, ">", "$CWD/hs_records.log");
@@ -541,8 +692,8 @@ sub update_records {
             foreach my $k3 (keys %{$hero}) {
 		my $losses = $hero->{$k3}->{losses} // 0;
 		my $wins = $hero->{$k3}->{wins} // 0;
-		
-		my $line = "matchup_single;${k1};${k2};${k3};${wins};${losses}\n"; 
+
+		my $line = "matchup_single;${k1};${k2};${k3};${wins};${losses}\n";
 		print REC $line;
 	    }
 	    my $matchup = $hash->{$k1}->{$k2}->{matchup};
@@ -558,11 +709,59 @@ sub update_records {
             print REC $l;
         }
     }
+
+    # log all arena results
+    my $total_arena_wins = 0;
+    my $total_arena_losses = 0;
+    my $total_arena_games = 0;
+    foreach my $arena_k (keys %{$arena_stats}) {
+	my $wins   = $arena_stats->{$arena_k}->{wins};
+	my $losses = $arena_stats->{$arena_k}->{losses};
+	my $hero   = $arena_stats->{$arena_k}->{hero};
+	my $l = "arena_stats;${arena_k};${wins};${losses};${hero}\n";
+
+	if ($wins == 12 or $losses == 3) {
+	    # average up the results of this completed arena run
+	    $total_arena_wins += $wins;
+	    $total_arena_losses += $losses;
+	    $total_arena_games += 1;
+	}
+	print REC $l;
+    }
+    # if we have a completed arena stat, log it and update the avg arena win variable
+    if ($total_arena_games > 0) {
+	my $avg_arena_wins = $total_arena_wins / $total_arena_games;
+	my $l = "arena_global_stats;$total_arena_games;$avg_arena_wins;$total_arena_wins;$total_arena_losses\n";
+	print REC $l;
+	msg("Updating average arena win count to $avg_arena_wins");
+	$AVG_ARENA_WINS = $avg_arena_wins;
+    }
+
     close(REC);
 }
 
-# main
+sub handle_arena {
+    my ($arena_deck, $line) = @_;
+    if ($line =~ /Draft Deck ID: (\d+), Hero Card = (HERO_\d\d)/i) {
+	# Load in the new deck, reset the arena deck hash
+	$CURRENT_ARENA_ID = $1;
+	$CURRENT_ARENA_HERO = $2;
+	$MATCHUP_ARENA = $CARD_DB->{$CURRENT_ARENA_HERO} . " (" . $CURRENT_ARENA_ID . ")";
+	$arena_deck = {};
+    } elsif ($line =~ /Draft deck contains card (\S+)/i) {
+	# add the card to the arena deck
+	my $card_uuid = $1;
+	$arena_deck->{$card_uuid}++;
+    }
+}
 
+# main
+if ($ARGV[0]) {
+    $GAME_LOGGING = 1;
+    print "Game logging enabled\n";
+}
+
+load_hs_json();
 enable_logging();
 init_player_log();
 scan_player_log();
