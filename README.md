@@ -33,3 +33,4 @@ The records that are kept include:
 * All arena runs.
 
 ![Alt text](hs_scanner.png?raw=true "hs_scanner")
+![Alt text](arena.jpeg?raw=true "hs_scanner")
