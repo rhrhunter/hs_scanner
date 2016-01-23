@@ -329,8 +329,9 @@ sub scan_player_log {
 		# if it ends with an "e" it is the effect of a spell or buff.
 		# it is the effect of a hero power if it ends in 'o'
 		# if it has tk9, it is an old fashion token (treant)
+		# if it has t2, it is a transformation e.g. Druid of the claw
 		# ignore it either way.
-		if ($card_uuid and $card_uuid =~ /(t|e|o|tk9)\s*$/i) {
+		if ($card_uuid and $card_uuid =~ /(t|e|o|tk9|t2)\s*$/i) {
 		    next;
 		}
 		# This is what happens when someone ropes their turn.
