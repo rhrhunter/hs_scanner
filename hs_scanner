@@ -325,13 +325,17 @@ sub scan_player_log {
 		    $player_id = $1;
 		}
 
+		#############################################################
+		# The following matches cards that should be ignorede since
+		# they represent spell effects, buffs, or token minions
+		#############################################################
 		# if the card uuid ends in a "t" it is a token,
 		# if it ends with an "e" it is the effect of a spell or buff.
 		# it is the effect of a hero power if it ends in 'o'
 		# if it has tk9, it is an old fashion token (treant)
 		# if it has t2, it is a transformation e.g. Druid of the claw
-		# ignore it either way.
-		if ($card_uuid and $card_uuid =~ /(t|e|o|tk9|t2)\s*$/i) {
+		# cs2_mirror are the minions spawned from the spell mirror image.
+		if ($card_uuid and $card_uuid =~ /(t|e|o|tk9|t2|CS2_mirror)\s*$/i) {
 		    next;
 		}
 		# This is what happens when someone ropes their turn.
