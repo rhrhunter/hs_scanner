@@ -665,7 +665,7 @@ sub update_records {
             my $w3 = $hash->{$friendly_ent}->{$friendly_hero}->{wins} // 0;
             my $l3 = $hash->{$friendly_ent}->{$friendly_hero}->{losses} // 0;
 
-            $MATCHUP_SINGLE = "$friendly_hero v. $curr_enemy [$w1 - $l2]";
+            $MATCHUP_SINGLE = "$friendly_hero v. $curr_enemy [$w1 - $l1]";
             $MATCHUP_ALL = "$friendly_ent v. $enemy_ent [$w2 - $l2]";
             $MATCHUP_GLOBAL = "$friendly_ent (as $friendly_hero) [$w3 - $l3]";
 
