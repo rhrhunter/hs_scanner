@@ -10,4 +10,4 @@ before_install:
 
 install: true
 
-script: perl -wc hs_scanner
+script: perl -wc hs_scanner; ./hs_scanner
