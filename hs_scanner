@@ -34,9 +34,16 @@ sub load_hs_json {
     }
     my $decoded_json = decode_json($json);
 
+    my $label = "";
     foreach my $elm (@{$decoded_json}) {
-        $CARD_DB->{$elm->{id}} = $elm->{name};
+	if (exists $elm->{cost} and defined($elm->{cost})) {
+	    $label = $elm->{name} . " (" . $elm->{cost} . ")";
+	} else {
+	    $label = $elm->{name};
+	}
+        $CARD_DB->{$elm->{id}} = $label;
     }
+
 }
 
 sub enable_logging {
