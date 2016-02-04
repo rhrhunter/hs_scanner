@@ -34,16 +34,17 @@ sub load_hs_json {
     }
     my $decoded_json = decode_json($json);
 
-    my $label = "";
     foreach my $elm (@{$decoded_json}) {
+	my $label = {};
 	if (exists $elm->{cost} and defined($elm->{cost})) {
-	    $label = $elm->{name} . " (" . $elm->{cost} . ")";
+	    $label->{name} = $elm->{name};
+	    $label->{cost} = $elm->{cost};
 	} else {
-	    $label = $elm->{name};
+	    $label->{name} = $elm->{name};
+	    $label->{cost} = "";
 	}
         $CARD_DB->{$elm->{id}} = $label;
     }
-
 }
 
 sub enable_logging {
@@ -87,7 +88,7 @@ chomp($player_log);
 sub init_player_log {
     `mkdir -p ~/Library/Logs/Unity`;
     `touch ~/Library/Logs/Unity/Player.log`;
-    `echo "" > ~/Library/Logs/Unity/Player.log`;
+    #`echo "" > ~/Library/Logs/Unity/Player.log`;
 
     system("rm $CWD/hs_game.log 2>/dev/null");
 }
@@ -97,9 +98,26 @@ sub convert_arena_deck {
 
     my $r = {};
     foreach my $k (keys %{$d}) {
-        $r->{$CARD_DB->{$k}} = $d->{$k};
+        $r->{$CARD_DB->{$k}->{name} . " (" . $CARD_DB->{$k}->{cost} . ")"} = $d->{$k};
     }
+    
     return $r;
+}
+
+sub generate_mana_curve {
+    my ($d) = @_;
+
+    my %buckets;
+    foreach my $k (keys %{$d}) {
+	$buckets{$CARD_DB->{$k}->{cost}} .= "|";
+    }
+    
+    my @sorted_buckets = ();
+    foreach my $k (sort keys %buckets) {
+	push(@sorted_buckets, $k . " -- " . $buckets{$k});
+    }
+    
+    return \@sorted_buckets;
 }
 
 my $result_change = 1;
@@ -116,7 +134,7 @@ sub display_results {
 	push(@h,
 	     #"Drawn Cards",   $drawn_cards,
 	     "Arena Deck",    convert_arena_deck($arena_deck),
-	     "Enemy Secrets", $enemy_secrets);
+	     "Mana Curve",    generate_mana_curve($arena_deck));
     } else {
 	# normal game
 	if ($MATCHUP_SINGLE) {
@@ -587,7 +605,7 @@ sub lookup_arena_records {
     my $arena_stats_r;
     my $arena_record;
     if ($IS_ARENA and !$arena_stats_r) {
-	$arena_stats_r = $CARD_DB->{$CURRENT_ARENA_HERO} . "($CURRENT_ARENA_ID)";
+	$arena_stats_r = $CARD_DB->{$CURRENT_ARENA_HERO}->{name} . "($CURRENT_ARENA_ID)";
         $arena_record = "[0 - 0]";
     }
     open(RECORDSA, "<", "$CWD/hs_records.log") or return;
@@ -596,7 +614,7 @@ sub lookup_arena_records {
     while (my $line = <RECORDSA>) {
         chomp($line);
 	if ($line =~ /^arena_stats;$CURRENT_ARENA_ID;(\d+?);(\d+?);(\S+?)$/) {
-	    $arena_stats_r = $CARD_DB->{$CURRENT_ARENA_HERO} . " ($CURRENT_ARENA_ID)";
+	    $arena_stats_r = $CARD_DB->{$CURRENT_ARENA_HERO}->{name} . " ($CURRENT_ARENA_ID)";
             $arena_record = "[$1 - $2]";
 	    last;
 	}
@@ -691,7 +709,7 @@ sub update_records {
 	my $losses = $arena_stats->{$CURRENT_ARENA_ID}->{losses} //= 0;
 	$arena_stats->{$CURRENT_ARENA_ID}->{hero} = $CURRENT_ARENA_HERO;
 
-	$MATCHUP_ARENA = $CARD_DB->{$CURRENT_ARENA_HERO} . " (" . $CURRENT_ARENA_ID . ")";
+	$MATCHUP_ARENA = $CARD_DB->{$CURRENT_ARENA_HERO}->{name} . " (" . $CURRENT_ARENA_ID . ")";
         $ARENA_RECORD = "[$wins - $losses]";
     }
 
@@ -758,7 +776,7 @@ sub handle_arena {
 	# Load in the new deck, reset the arena deck hash
 	$CURRENT_ARENA_ID = $1;
 	$CURRENT_ARENA_HERO = $2;
-	$MATCHUP_ARENA = $CARD_DB->{$CURRENT_ARENA_HERO} . " (" . $CURRENT_ARENA_ID . ")";
+	$MATCHUP_ARENA = $CARD_DB->{$CURRENT_ARENA_HERO}->{name} . " (" . $CURRENT_ARENA_ID . ")";
 	$arena_deck = {};
     } elsif ($line =~ /Draft deck contains card (\S+)/i) {
 	# add the card to the arena deck
