@@ -88,7 +88,7 @@ chomp($player_log);
 sub init_player_log {
     `mkdir -p ~/Library/Logs/Unity`;
     `touch ~/Library/Logs/Unity/Player.log`;
-    #`echo "" > ~/Library/Logs/Unity/Player.log`;
+    `echo "" > ~/Library/Logs/Unity/Player.log`;
 
     system("rm $CWD/hs_game.log 2>/dev/null");
 }
@@ -98,7 +98,8 @@ sub convert_arena_deck {
 
     my $r = {};
     foreach my $k (keys %{$d}) {
-        $r->{$CARD_DB->{$k}->{name} . " (" . $CARD_DB->{$k}->{cost} . ")"} = $d->{$k};
+	$r->{$CARD_DB->{$k}->{cost} . " " . $CARD_DB->{$k}->{name}} = $d->{$k};
+        #$r->{$CARD_DB->{$k}->{name} . " (" . $CARD_DB->{$k}->{cost} . ")"} = $d->{$k};
     }
     
     return $r;

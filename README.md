@@ -19,7 +19,7 @@ For arena play, it will track the progress of your arena deck in real time:
 * The current arena record
 * Your average win rate across all your completed arenas
 * The cards in your arena deck that have not been drawn yet
-* Enemy Secrets
+* The mana curve of the cards left in your deck
 
 It will keep track of enemy secrets played as well as let you know when they get revealed.
 
